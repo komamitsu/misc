@@ -1,0 +1,56 @@
+#!/usr/bin/env ruby
+require 'rubygems'
+require 'popen4'
+require 'tempfile'
+
+class QuickC
+  TMP_BASE_SRC = 'temp_src'
+  TMP_BASE_BIN = 'temp_bin'
+  CC = 'cc'
+  INCLUDES = %w|stdio.h stdlib.h string.h unistd.h|
+
+  def initialize(source_code)
+    @source_code = source_code
+  end
+
+  def execute(cmd)
+    POpen4::popen4(cmd) {|so, se, si, pid|
+      out = so.read
+      puts out if out.length >0
+
+      err = se.read
+      warn err if err.length >0
+    }.exitstatus
+  end
+  private :execute
+
+  def build_and_run
+    begin
+      src = Tempfile.open([TMP_BASE_SRC, '.c'])
+      src_path = src.path
+      src.write(<<-EOC)
+#{INCLUDES.map {|inc| "#include <#{inc}>"}.join("\n")}
+
+#{@source_code}
+      EOC
+      src.close
+
+      bin = Tempfile.open(TMP_BASE_BIN)
+      bin_path = bin.path
+      bin.close
+
+      if (execute("#{CC} -o #{bin_path} #{src_path}")).zero?
+        execute("#{bin.path}")
+      end
+    ensure
+      bin.close unless bin.closed?
+      src.close unless src.closed?
+    end
+  end
+end
+
+if __FILE__ == $0
+  qc = QuickC.new(ARGF.read)
+  qc.build_and_run
+end
+
