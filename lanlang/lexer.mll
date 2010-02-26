@@ -1,5 +1,3 @@
-(*
-(* File lexer.mll *)
 {
   open Parser        (* The type token is defined in parser.mli *)
   exception Eof
@@ -14,16 +12,5 @@ rule token = parse
 	| '/'            { DIV }
 	| '('            { LPAREN }
 	| ')'            { RPAREN }
-	| eof            { raise Eof }
-*)
-
-{
-  exception Eof
-}
-rule token = parse
-		[' ' '\t']     { token lexbuf }     (* skip blanks *)
-	| ['0'-'9']+     { Lexing.lexeme lexbuf }
-	| '+'            { "plus" }
-	| '-'            { "minus" }
 	| eof            { raise Eof }
  
