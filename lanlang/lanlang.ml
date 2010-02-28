@@ -33,10 +33,6 @@ let rec eval_stmt env stmt =
   );
   env
 
-let rec eval_stml_list env = function
-  | [] -> ()
-  | hd :: tl -> eval_stml_list (eval_stmt env hd) tl
-
 let sample_stmt_list =
 (* 
  * x = 17 - 13;
