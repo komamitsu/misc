@@ -86,10 +86,17 @@ and eval_expr env = function
       let v = innar_func env params f in
       (env, v)
 and innar_func env params name : value =
+  let get_values () =
+    let env, vs = 
+      List.fold_left 
+        (fun (env, vs) expr ->
+          let new_env, v = eval_expr env expr in
+          (new_env, v::vs)) (env, []) params in
+    (env, List.rev vs) in
   match name with
   | "print" -> 
-      let expr = List.hd params in 
-      let _, v = eval_expr env expr in (
+      let env, vs = get_values () in
+      let v = List.nth vs 0 in (
         match v with
         | Symbol s -> printf "(symbol : %s)" s
         | Int i -> print_int i
@@ -99,14 +106,69 @@ and innar_func env params name : value =
         | Null -> print_string "(null)"
       ); v
   | "concat" -> 
+      let env, vs = get_values () in
       String (
         List.fold_left 
-          (fun acc expr ->
-            let _, v = eval_expr env expr in
+          (fun acc v ->
             match v with
             | String s -> acc ^ s
-            | _ -> failwith "concat: not String type"
-          ) "" params
+            | _ -> failwith (sprintf "%s: Invalid type" name)
+          ) "" vs
+      )
+  | ">" -> 
+      let env, vs = get_values () in (
+        match (List.nth vs 0), (List.nth vs 1) with
+        | Int a, Int b -> Bool (a > b)
+        | String a, String b -> Bool (String.compare a b > 0)
+        | _ -> failwith (sprintf "%s: Invalid type" name)
+      )
+  | ">=" -> 
+      let env, vs = get_values () in (
+        match (List.nth vs 0), (List.nth vs 1) with
+        | Int a, Int b -> Bool (a >= b)
+        | String a, String b -> Bool (String.compare a b >= 0)
+        | _ -> failwith (sprintf "%s: Invalid type" name)
+      )
+  | "<" ->
+      let env, vs = get_values () in (
+        match (List.nth vs 0), (List.nth vs 1) with
+        | Int a, Int b -> Bool (a < b)
+        | String a, String b -> Bool (String.compare a b < 0)
+        | _ -> failwith (sprintf "%s: Invalid type" name)
+      )
+  | "<=" ->
+      let env, vs = get_values () in (
+        match (List.nth vs 0), (List.nth vs 1) with
+        | Int a, Int b -> Bool (a <= b)
+        | String a, String b -> Bool (String.compare a b <= 0)
+        | _ -> failwith (sprintf "%s: Invalid type" name)
+      )
+  | "==" ->
+      let env, vs = get_values () in (
+        match (List.nth vs 0), (List.nth vs 1) with
+        | Int a, Int b -> Bool (a = b)
+        | String a, String b -> Bool (String.compare a b = 0)
+        | _ -> failwith (sprintf "%s: Invalid type" name)
+      )
+  | "!=" ->
+      let env, vs = get_values () in (
+        match (List.nth vs 0), (List.nth vs 1) with
+        | Int a, Int b -> Bool (a != b)
+        | String a, String b -> Bool (String.compare a b != 0)
+        | _ -> failwith (sprintf "%s: Invalid type" name)
+      )
+  | "if" -> (
+        match params with
+        | expr_cond::expr_true::expr_false::[] ->
+            let env, v = eval_expr env expr_cond in (
+              match v with
+              | Bool b ->
+                  let env, v =
+                    eval_expr env (if b then expr_true else expr_false) in
+                  v
+              | _ -> failwith (sprintf "%s: Invalid type" name)
+            )
+        | _ -> failwith (sprintf "%s: Invalid type" name)
       )
   | _ -> 
       failwith (sprintf "innar_func: %s was not found" name)
@@ -123,17 +185,23 @@ let sample = [
               GetVar "first_name";
               Value (String " ");
               GetVar "last_name";
-              Value (String ".")
+              Value (String ".\n")
             ]));
           CallInnarFunc ("print", [GetVar "full_name"])
         ]
     )));
-    CallFunc ("hello", 
-      [
-        Value (String "Larry");
-        Value (String "Wall")
-      ]
-    )
+  CallFunc ("hello", 
+    [
+      Value (String "Larry");
+      Value (String "Wall")
+    ]
+  );
+  CallInnarFunc ("if",
+    [
+      CallInnarFunc (">=", [Value (Int 1234); Value (Int 1235)]);
+      CallInnarFunc ("print", [Value (String "foo")]);
+      CallInnarFunc ("print", [Value (String "bar")])
+    ]);
 ]
 
 let _ =
