@@ -151,7 +151,7 @@ FILES[] =
    parser
    lanlang
 #
-PROGRAM = langlang
+PROGRAM = lanlang
 # OCAML_LIBS +=
 # OCAML_CLIBS +=
 # OCAML_OTHER_LIBS +=

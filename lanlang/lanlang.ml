@@ -2,77 +2,103 @@ open Printf
 
 type symbol = string
 
-type stmt =
-  | Expr of expr
-  | Bind of symbol * expr
-  | Print of expr
-and expr = 
-  | Add of expr * expr
-  | Sub of expr * expr
-  | Mul of expr * expr
-  | Div of expr * expr
-  | Atom of atom
-  | Appl of symbol
-  | If of boolean * expr * expr
-and atom = 
-  | Int of int 
-and boolean =
-  | Ge of expr * expr
-  | Gt of expr * expr
-  | Le of expr * expr
-  | Lt of expr * expr
+type expr =
+  | Value of value
+  | SetVar of symbol * value
+  | GetVar of symbol
+  | CallFunc of symbol * value list
+  | CallInnarFunc of symbol * value list
+and value =
+  | Symbol of symbol
+  | Int of int
+  | String of string
+  | Bool of bool
+  | Func of symbol list * expr list
+  | Null
 
-let rec eval_expr env = function
-  | Add (a, b) -> (eval_expr env a) + (eval_expr env b)
-  | Sub (a, b) -> (eval_expr env a) - (eval_expr env b)
-  | Mul (a, b) -> (eval_expr env a) * (eval_expr env b)
-  | Div (a, b) -> (eval_expr env a) / (eval_expr env b)
-  | Atom a -> (match a with Int a -> a)
-  | Appl k -> Hashtbl.find env k
-  | If (cond, a, b) ->
-      if (
-        match cond with
-        | Ge (a, b) -> a >= b
-        | Gt (a, b) -> a > b
-        | Le (a, b) -> a <= b
-        | Lt (a, b) -> a < b
-      ) then eval_expr env a
-      else eval_expr env b
+type env = (value, value) Hashtbl.t list
 
-let rec eval_stmt env stmt =
-  ignore (
-    match stmt with
-    | Expr e -> ignore (eval_expr env e)
-    | Bind (s, e) -> Hashtbl.replace env s (eval_expr env e)
-    | Print e -> printf "=> %d\n" (eval_expr env e)
-  );
-  env
+let empty_env () = [Hashtbl.create 10]
 
-let sample_stmt_list =
-(* 
- * x = 17 - 13;
- * y = 3 + 7;
- * 31 + 11;
- * print (5 * x / y);   # => 2
- * z = if (19 <= 19) then 29 else 37
- * print z;             # => 29
- * z = if (19 > 19) then 29 else 37
- * print z;             # => 37
- *)
-  [
-    Bind ("x", Sub (Atom (Int 17), Atom (Int 13)));
-    Bind ("y", Add (Atom (Int 3), Atom (Int 7)));
-    Expr (Add (Atom (Int 31), Atom (Int 11)));
-    Print (Div (Mul (Atom (Int 5), Appl "x"), Appl "y"));
-    Bind ("z", If (Le (Atom (Int 19), Atom (Int 19)), Atom (Int 29), Atom (Int 37)));
-    Print (Appl "z");
-    Bind ("z", If (Gt (Atom (Int 19), Atom (Int 19)), Atom (Int 29), Atom (Int 37)));
-    Print (Appl "z");
-  ]
-  
+let append_to_current_env env k v = 
+  match env with
+  | [] -> failwith "append_to_current_env: No current_env"
+  | hd :: tl -> 
+      Hashtbl.replace hd k v;
+      hd :: tl
+
+let rec find_from_env env k = 
+  match env with
+  | [] -> raise Not_found
+  | hd :: tl -> 
+      try Hashtbl.find hd k with 
+      | Not_found -> find_from_env tl k
+
+let create_next_env env =
+  Hashtbl.create 10 :: env
+
+let drop_current_env env =
+  match env with
+  | [] -> failwith "drop_current_env: No current_env"
+  | hd :: tl -> tl
+
+let innar_func env params name =
+  match name with
+  | "print" -> 
+      let v = List.hd params in (
+        match v with
+        | Symbol s -> printf "(symbol : %s)" s
+        | Int i -> print_int i
+        | String s -> print_string s
+        | Bool b -> print_string (if b then "(true)" else "(false)")
+        | Func _ -> print_string "(function)"
+        | Null -> print_string "(null)"
+      ); v
+  | _ -> 
+      failwith (sprintf "innar_func: %s was not found" name)
+
+let rec eval_expr_list env expr_list =
+  List.fold_left
+    (fun (env, result) expr ->
+      let rec eval_loop env expr =
+        match expr with
+        | Value v -> (env, expr)
+        | other_expr -> 
+            let env, expr = 
+              eval_expr env other_expr in
+            eval_loop env expr in
+      eval_loop env expr
+    ) (env, Value Null) expr_list
+and eval_expr env = function
+  | Value v -> (env, Value v)
+  | SetVar (k, v) -> 
+      let new_env = append_to_current_env env k v in
+      (new_env, Value v)
+  | GetVar k -> 
+      let v = find_from_env env k in 
+      (env, Value v)
+  | CallFunc (f, params) -> (
+      match find_from_env env f with
+      | Func (args, expr_list) ->
+          let env_with_args = 
+            List.fold_left2 
+              (fun env arg param -> 
+                append_to_current_env env arg param) 
+              (create_next_env env) args params in
+          let _, result =
+            eval_expr_list env_with_args expr_list in
+          (env, result)
+      | _ -> failwith "CallFunc: This is not a function"
+  )
+  | CallInnarFunc (f, params) -> 
+      let result = innar_func env params f in
+      (env, Value result)
+
+let sample = [
+  CallInnarFunc ("print", [Int 1234]);
+  Value (Int 123)
+]
+
 let _ =
-  let empty = Hashtbl.create 10 in
-  List.fold_left 
-    (fun env stmt -> eval_stmt env stmt)
-    empty sample_stmt_list
+  eval_expr_list (empty_env ()) sample
 
