@@ -6,14 +6,15 @@ type expr =
   | Value of value
   | SetVar of symbol * expr
   | GetVar of symbol
-  | CallFunc of symbol * expr list
-  | CallInnarFunc of symbol * expr list
+  | CallFunc of symbol * expr
+  | CallInnarFunc of symbol * expr
+  | ExprList of expr list
 and value =
   | Symbol of symbol
   | Int of int
   | String of string
   | Bool of bool
-  | Func of symbol list * expr list
+  | Func of symbol list * expr
   | Null
 
 module Env : sig
@@ -28,7 +29,9 @@ end
 struct
   type t = (symbol, value) Hashtbl.t list
 
-  let empty_env () = [Hashtbl.create 10]
+  let empty_env_unit () = Hashtbl.create 10
+
+  let empty_env () = [empty_env_unit ()]
 
   let append_to_current_env env k v = 
     match env with
@@ -45,7 +48,7 @@ struct
         | Not_found -> find_from_env tl k
 
   let create_next_env env =
-    Hashtbl.create 10 :: env
+    (empty_env_unit ()) :: env
 
   let drop_current_env env =
     match env with
@@ -55,11 +58,7 @@ end
 
 open Env
 
-let rec eval_expr_list env expr_list =
-  List.fold_left
-    (fun (env, _) expr -> eval_expr env expr)
-    (env, Null) expr_list
-and eval_expr env = function
+let rec eval_expr env = function
   | Value v -> (env, v)
   | SetVar (k, e) -> 
       let env, v = eval_expr env e in
@@ -70,29 +69,39 @@ and eval_expr env = function
       (env, v)
   | CallFunc (f, params) -> (
       match find_from_env env f with
-      | Func (args, expr_list) ->
-          let env_with_args = 
-            List.fold_left2 
+      | Func (args, expr_list) -> (
+        match params with
+        | ExprList ps ->
+            let env_with_args = 
+              List.fold_left2 
               (fun env arg param -> 
                 let new_env, v = eval_expr env param in
                 append_to_current_env new_env arg v) 
-              (create_next_env env) args params in
-          let _, v =
-            eval_expr_list env_with_args expr_list in
-          (env, v)
+              (create_next_env env) args ps in
+            eval_expr env_with_args expr_list
+        | _ -> failwith "CallFunc: Not ExprList was given"
+      )
       | _ -> failwith "CallFunc: This is not a function"
-  )
+    )
   | CallInnarFunc (f, params) -> 
       let v = innar_func env params f in
       (env, v)
-and innar_func env params name : value =
+  | ExprList expr_list ->
+      List.fold_left
+      (fun (env, _) expr -> eval_expr env expr)
+      (env, Null) expr_list
+and innar_func env (params : expr) name : value =
   let get_values () =
-    let env, vs = 
-      List.fold_left 
-        (fun (env, vs) expr ->
-          let new_env, v = eval_expr env expr in
-          (new_env, v::vs)) (env, []) params in
-    (env, List.rev vs) in
+    match params with
+    | ExprList ps ->
+        let env, vs = 
+          List.fold_left 
+          (fun (env, vs) expr ->
+            let new_env, v = eval_expr env expr in
+            (new_env, v::vs)) (env, []) ps in
+        (env, List.rev vs)
+    | _ -> failwith "CallFunc: Not ExprList was given"
+  in
   match name with
   | "print" -> 
       let env, vs = get_values () in
@@ -159,12 +168,13 @@ and innar_func env params name : value =
       )
   | "if" -> (
         match params with
-        | expr_cond::expr_true::expr_false::[] ->
+        | ExprList (expr_cond::expr_true::expr_false::[]) ->
             let env, v = eval_expr env expr_cond in (
               match v with
               | Bool b ->
                   let env, v =
-                    eval_expr env (if b then expr_true else expr_false) in
+                    eval_expr env 
+                      (if b then expr_true else expr_false) in
                   v
               | _ -> failwith (sprintf "%s: Invalid type" name)
             )
@@ -173,37 +183,42 @@ and innar_func env params name : value =
   | _ -> 
       failwith (sprintf "innar_func: %s was not found" name)
 
-let sample = [
+let sample = ExprList [
   SetVar ("hello",
     Value (
       Func (
         ["first_name"; "last_name"],
-        [
+        ExprList [
           SetVar ("full_name", 
-            CallInnarFunc ("concat", [
+            CallInnarFunc ("concat", ExprList [
               Value (String "I am ");
               GetVar "first_name";
               Value (String " ");
               GetVar "last_name";
               Value (String ".\n")
             ]));
-          CallInnarFunc ("print", [GetVar "full_name"])
+          CallInnarFunc ("print", ExprList [GetVar "full_name"])
         ]
     )));
   CallFunc ("hello", 
-    [
+    ExprList [
       Value (String "Larry");
       Value (String "Wall")
     ]
   );
   CallInnarFunc ("if",
-    [
-      CallInnarFunc (">=", [Value (Int 1234); Value (Int 1235)]);
-      CallInnarFunc ("print", [Value (String "foo")]);
-      CallInnarFunc ("print", [Value (String "bar")])
+    ExprList [
+      CallInnarFunc (">=", ExprList [Value (Int 1234); Value (Int 1235)]);
+      ExprList [
+        CallInnarFunc ("print", ExprList [Value (String "foo")])
+      ];
+      ExprList [
+        SetVar ("tmp", Value (String "bar"));
+        CallInnarFunc ("print", ExprList [GetVar "tmp"])
+      ]
     ]);
 ]
 
 let _ =
-  eval_expr_list (empty_env ()) sample
+  eval_expr (empty_env ()) sample
 
