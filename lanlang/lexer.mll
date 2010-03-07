@@ -1,16 +1,26 @@
 {
-  open Parser        (* The type token is defined in parser.mli *)
+  open Printf
+  open Parser
   exception Eof
 }
 rule token = parse
-		[' ' '\t']     { token lexbuf }     (* skip blanks *)
-	| ['\n' ]        { EOL }
-	| ['0'-'9']+     { INT(int_of_string(Lexing.lexeme lexbuf)) }
+  | [' ' '\t' '\n']+  { token lexbuf }
+	| ['0'-'9']+     { INT (int_of_string (Lexing.lexeme lexbuf)) }
+  | '"' [^ '\n']* '"'      { 
+    let s = Lexing.lexeme lexbuf in
+    let striped = String.sub s 1 ((String.length s) -2) in
+    STRING striped
+  }
 	| '+'            { PLUS }
 	| '-'            { MINUS }
 	| '*'            { TIMES }
 	| '/'            { DIV }
 	| '('            { LPAREN }
 	| ')'            { RPAREN }
-	| eof            { raise Eof }
+	| '{'            { LBRACE }
+	| '}'            { RBRACE }
+  | ';'            { TERM }
+(*	| eof            { raise Eof } *)
+	| eof            { EOF }
+  | _ as other     { printf "Unrecognized character: %c\n" other; token lexbuf }
  

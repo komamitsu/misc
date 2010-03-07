@@ -1,5 +1,7 @@
+open Syntax
 open Printf
 
+(*
 type symbol = string
 
 type expr =
@@ -16,6 +18,7 @@ and value =
   | Bool of bool
   | Func of symbol list * expr
   | Null
+*)
 
 module Env : sig
   type t
@@ -220,5 +223,11 @@ let sample = ExprList [
 ]
 
 let _ =
-  eval_expr (empty_env ()) sample
+  let lexbuf = Lexing.from_channel stdin in
+  let rec loop parsed =
+    let result = Parser.main Lexer.token lexbuf in
+    result::parsed in
+  loop []
+
+(*  eval_expr (empty_env ()) sample *)
 

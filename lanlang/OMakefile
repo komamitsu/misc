@@ -147,6 +147,7 @@ OCamlGeneratedFiles(parser.ml lexer.ml)
 #
 
 FILES[] =
+   syntax
    lexer
    parser
    lanlang
