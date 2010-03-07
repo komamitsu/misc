@@ -1,25 +1,6 @@
 open Syntax
 open Printf
 
-(*
-type symbol = string
-
-type expr =
-  | Value of value
-  | SetVar of symbol * expr
-  | GetVar of symbol
-  | CallFunc of symbol * expr
-  | CallInnarFunc of symbol * expr
-  | ExprList of expr list
-and value =
-  | Symbol of symbol
-  | Int of int
-  | String of string
-  | Bool of bool
-  | Func of symbol list * expr
-  | Null
-*)
-
 module Env : sig
   type t
   val empty_env : unit -> t
@@ -223,11 +204,17 @@ let sample = ExprList [
 ]
 
 let _ =
-  let lexbuf = Lexing.from_channel stdin in
-  let rec loop parsed =
-    let result = Parser.main Lexer.token lexbuf in
-    result::parsed in
-  loop []
+  Printexc.record_backtrace true;
+  try 
+    let lexbuf = Lexing.from_channel stdin in
+    let rec loop parsed =
+      let result = Parser.main Lexer.token lexbuf in
+      result::parsed in
+    let expr_list = loop [] in
+    ignore (eval_expr (empty_env ()) (ExprList expr_list))
+  with e -> 
+    Printf.eprintf "Unexpected exception : %s\n" (Printexc.to_string e);
+    Printexc.print_backtrace stderr
 
 (*  eval_expr (empty_env ()) sample *)
 

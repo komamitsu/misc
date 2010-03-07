@@ -8,7 +8,8 @@
 %token FUNC
 %token LPAREN RPAREN
 %token LBRACE RBRACE
-%token TERM
+%token EQUAL
+%token TERM COMMA
 %token EOF
 %token PLUS MINUS
 %token TIMES DIV
@@ -25,24 +26,52 @@ expr_list:
   | exprs                   { ExprList $1 }
 
 exprs:
-  | expr                    { [$1] }
-  | exprs expr              { $1 @ [$2] }
+  | void TERM               { 
+printf "exprs: TERM\n"; flush stdout;
+    [] }
+  | expr TERM               { 
+printf "exprs: expr TERM\n"; flush stdout;
+    [$1] }
+  | exprs expr TERM    {
+printf "exprs: exprs expr TERM\n"; flush stdout;
+    $1 @ [$2] }
+  | exprs void TERM    {
+printf "exprs: exprs void TERM\n"; flush stdout;
+    $1 }
+
+void: {}
 
 expr:
-  | value TERM              { Value $1 }
-  | symbol '=' expr         { SetVar ($1, $3) }
+  | value                   { 
+printf "expr: value\n"; flush stdout;
+    Value $1 }
+  | symbol EQUAL expr       { 
+printf "expr: symbol EQUAL expr\n"; flush stdout;
+    SetVar ($1, $3) }
+  | symbol LPAREN func_params RPAREN { 
+printf "expr: callfunc\n"; flush stdout;
+    CallFunc ($1, ExprList $3) }
 
 value:
-  | INT                     { Int ($1) }
-  | MINUS INT %prec UMINUS  { Int (-$2) }
+  | INT                     { 
+printf "value: INT\n"; flush stdout;
+    Int ($1) }
+  | MINUS INT %prec UMINUS  { 
+printf "value: MINUS INT prec UMINUS\n"; flush stdout;
+    Int (-$2) }
   | STRING                  { String $1 }
-  | symbol                  { Symbol $1 }
+  | symbol                  { 
+printf "value: symbol\n"; flush stdout;
+    Symbol $1 }
   | FUNC LPAREN func_args RPAREN LBRACE expr_list RBRACE { 
+printf "value: func\n"; flush stdout;
     Func ($3, $6)
   }
 
 symbol:
-  | SYMBOL                  { $1 }
+  | SYMBOL                  { 
+printf "symbol\n"; flush stdout;
+    $1 }
 
 func_def:
   | FUNC symbol LPAREN func_args RPAREN LBRACE expr_list RBRACE { 
@@ -51,5 +80,9 @@ func_def:
 
 func_args:
   | symbol                  { [$1] } 
-  | func_args ',' symbol    { $1 @ [$3] }
+  | func_args COMMA symbol  { $1 @ [$3] }
+
+func_params:
+  | expr                    { [$1] }
+  | func_params COMMA expr  { $1 @ [$3] }
 

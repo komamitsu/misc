@@ -115,7 +115,7 @@ USE_OCAMLFIND = true
 #
 # Various options
 #
-# OCAMLFLAGS    +=
+OCAMLFLAGS    += -g
 # OCAMLCFLAGS   +=
 # OCAMLOPTFLAGS +=
 # OCAML_LINK_FLAGS +=
