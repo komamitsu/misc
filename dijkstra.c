@@ -20,7 +20,7 @@ route routes[] = {
 
 const int routes_len = sizeof(routes) / sizeof(routes[0]);
 
-route *find_route(char id)
+static route *find_route(char id)
 {
   int i;
   for (i = 0; i < routes_len; i++) {
@@ -34,7 +34,6 @@ int main()
   int i, j;
   char from, to;
   route *next_route;
-  const int large_cost = 99999;
 
   while (1) {
     for (i = 0; i < routes_len; i++) {
