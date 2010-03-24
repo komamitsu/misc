@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <string.h>
 #include <assert.h>
 
 #define MAX_COIN 20
@@ -90,9 +91,24 @@ static int calc(coins *saving, int price, coins *payment)
   return 0;
 }
 
+static int parse(char *buf, int nums_max, int nums[])
+{
+  int i;
+  char *tok, *saveptr, *p;
+
+  for (i = 0, p = buf; i < nums_max; i++, p = NULL) {
+    tok = strtok_r(p, " ", &saveptr);
+    if (tok == NULL) break;
+    nums[i] = atoi(tok);
+  }
+
+  return i == nums_max ? -1 : i;
+}
+
 int main()
 {
   coins saving, payment;
+  char buf[256];
 
   saving.y500 = 0;
   saving.y100 = 2;
@@ -125,6 +141,43 @@ int main()
   assert(saving.y100 == 3);
   assert(saving.y50 == 1);
   assert(saving.y10 == 4);
+
+  {
+    int nums[4];
+    char buf[256];
+    strncpy(buf, "0 1 2", sizeof(buf));
+    assert(parse(buf, 4, nums) == 3);
+    assert(nums[0] == 0);
+    assert(nums[1] == 1);
+    assert(nums[2] == 2);
+    strncpy(buf, "0 1 2 4", sizeof(buf));
+    assert(parse(buf, 4, nums) == -1);
+  }
+
+  while (fgets(buf, sizeof(buf), stdin) != NULL) {
+    int price;
+    int nums[4 + 1];
+
+    sscanf(buf, "%d", &price);
+    if (!price) break;
+
+    if (fgets(buf, sizeof(buf), stdin) == NULL) break;
+
+    assert(parse(buf, sizeof(nums) / sizeof(nums[0]), nums) == 4);
+
+    saving.y10 = nums[0];
+    saving.y50 = nums[1];
+    saving.y100 = nums[2];
+    saving.y500 = nums[3];
+
+    calc(&saving, price, &payment);
+
+    if (payment.y10 > 0) printf("10 %d\n", payment.y10);
+    if (payment.y50 > 0) printf("50 %d\n", payment.y50);
+    if (payment.y100 > 0) printf("100 %d\n", payment.y100);
+    if (payment.y500 > 0) printf("500 %d\n", payment.y500);
+    printf("\n");
+  }
 
   return 0;
 }
