@@ -29,8 +29,7 @@ static int least_common_multiple(int a, int b)
 
   if (gcd == 1) return a * b;
 
-  for (i = gcd; ;i += gcd)
-    if (i % a == 0 && i % b == 0) return i;
+  return a * b / gcd;
 }
 
 static void print_fraction(fraction *f)
@@ -90,11 +89,19 @@ static int process(int p, int q, int a, int n, int fnum, fraction fs[])
   count_h = process(p, q, a, n, fnum, fs_h);
 
   count_v = 0;
-  if (fnum < MAX_NUM && compare_fraction(&exp, &acc) > 0) {
+  if (fnum < n && compare_fraction(&exp, &acc) > 0) {
     memcpy(&fs_v, fs, sizeof(fs_v));
     memcpy(&fs_v[fnum], &fs_v[fnum - 1], sizeof(fraction));
     count_v = process(p, q, a, n, fnum + 1, fs_v);
   }
+/*
+printf("fs are >>> ");
+for (i = 0; i < fnum; i++) printf("%d ", fs[i].denominator);
+printf("\n");
+printf("exp: "); print_fraction(&exp);
+printf("acc: "); print_fraction(&acc);
+if (compare_fraction(&exp, &acc) == 0) printf("<<< matched >>>\n");
+*/
 
   return (compare_fraction(&exp, &acc) == 0 ?  1 : 0) + count_h + count_v;
 }
@@ -148,6 +155,7 @@ int main()
 
   while (1) {
     scanf("%d %d %d %d", &p, &q, &a, &n);
+    if (p == 0 && q == 0 && a == 0 && n == 0) break;
     printf("%d\n", process(p, q, a, n, 1, fs));
   }
 
