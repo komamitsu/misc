@@ -150,7 +150,7 @@ int main()
 
   int p, q, a, n;
   char buf[256];
-  fraction f = { .numerator = 1, .denominator = 2 };
+  fraction f = { .numerator = 1, .denominator = 1 };
   fraction fs[MAX_NUM] = { f };
 
   while (1) {
