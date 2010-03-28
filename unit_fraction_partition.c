@@ -94,13 +94,13 @@ static int process(int p, int q, int a, int n, int fnum, fraction fs[])
     memcpy(&fs_v[fnum], &fs_v[fnum - 1], sizeof(fraction));
     count_v = process(p, q, a, n, fnum + 1, fs_v);
   }
-/*
+  /*
 printf("fs are >>> ");
 for (i = 0; i < fnum; i++) printf("%d ", fs[i].denominator);
 printf("\n");
-printf("exp: "); print_fraction(&exp);
-printf("acc: "); print_fraction(&acc);
-if (compare_fraction(&exp, &acc) == 0) printf("<<< matched >>>\n");
+// printf("exp: "); print_fraction(&exp);
+// printf("acc: "); print_fraction(&acc);
+// if (compare_fraction(&exp, &acc) == 0) printf("<<< matched >>>\n");
 */
 
   return (compare_fraction(&exp, &acc) == 0 ?  1 : 0) + count_h + count_v;
