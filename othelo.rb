@@ -58,7 +58,7 @@ class Map
     (0...@length_y).each do |y|
       (0...@length_x).each do |x|
         map = deep_copy
-        cs << map if map.get(x, y).nil? && map.put(x, y, p)
+        cs << {:x => x, :y => y, :map => map} if map.get(x, y).nil? && map.put(x, y, p)
       end
     end
     cs
@@ -90,11 +90,11 @@ class Map
       unless st[:empty].zero?
         cs = candidates(p)
         if cs.size > 0
-          cs.map{|c| c.eval(next_pos)}
+          cs.map{|c| {:x => c[:x], :y => c[:y], :eval => c[:map].eval(next_pos)} }
         else
           cs = candidates(next_pos)
           if cs.size > 0
-            cs.map{|c| c.eval(p)}
+            cs.map{|c| {:x => c[:x], :y => c[:y], :eval => c[:map].eval(p)} }
           else
             st[:empty] = 0
             nil
@@ -129,7 +129,10 @@ class Map
     puts_with_indent('---------------------------------------------------', level)
     e[:map].dump(level)
     puts_with_indent("pos[#{e[:position]}] score[#{e[:score]}] children[", level)
-    e[:children].each{|c| dump_eval(c, level + 1)} if e[:children]
+    e[:children].each{|c| 
+      puts_with_indent("x[#{c[:x]}] y[#{c[:y]}]", level + 1)
+      dump_eval(c[:eval], level + 1)
+    } if e[:children]
     puts_with_indent("]", level)
     puts_with_indent('---------------------------------------------------', level)
   end
@@ -143,6 +146,17 @@ class Map
     puts s
   end
 
+  def next_pos(p)
+    p == :first ? :last : :first
+  end
+
+  def finish?(p)
+    st = status
+    if st[:empty].zero? || (candidates(p).empty? && candidates(next_pos(p)).empty?)
+      return st[:first] - st[:last]
+    end
+  end
+      
   private
   def over?(x, y)
     x < 0 || y < 0 || x >= @length_x || y >= @length_y
@@ -166,28 +180,45 @@ class Map
       end
     end
   end
+end
 
-  def next_pos(p)
-    p == :first ? :last : :first
+map = Map.new(3, 3)
+me = :first
+opponent = map.next_pos(me)
+finish = lambda do |p| 
+  if result = map.finish?(p)
+    puts 'finish!!!'
+    case
+    when result > 0 then puts 'you won'
+    when result < 0 then puts 'you lost'
+    when result = 0 then puts 'draw'
+    end
+    true
   end
 end
 
-=begin
-me = :first
-map = Map.new(4, 3)
+map.dump
 while l = gets do
   next unless l =~ /(\d+).*(\d+)/
   map.put($1.to_i, $2.to_i, me)
   map.dump
+  break if finish.call(opponent)
   puts '----------- computer is thinking... --------------'
-  tree = map.eval(next_pos(me))
-  next = 
+  tree = map.eval(opponent)
+  candidate = 
     if me == :first
-      tree.max{|a, b| a[:score]
-=end
+      tree[:children].min{|c| c[:eval][:score]}
+    else
+      tree[:children].max{|c| c[:eval][:score]}
+    end
+  map.put(candidate[:x], candidate[:y], opponent)
+  map.dump
+  break if finish.call(p)
+end
   
-map = Map.new(3, 3)
-map.dump_eval(map.eval(:first))
+# map = Map.new(3, 3)
+# map.dump_eval(map.eval(:first))
+
 # p map.put(1, 3, 0)
 # map.dump
 # pp map.eval(:last)
