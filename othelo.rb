@@ -9,10 +9,6 @@ class Map
     set(@length_y / 2 - 1, @length_x / 2,     :last)
     set(@length_y / 2,     @length_x / 2 - 1, :last)
     set(@length_y / 2,     @length_x / 2,     :first)
-#    set(0, 0, :first)
-#    set(2, 0, :first)
-#    set(0, 1, :last)
-#    set(1, 1, :last)
   end
 
   def get(x, y)
@@ -108,18 +104,12 @@ class Map
         diff /= diff.abs unless diff.zero?
         diff * max
       else
-        nil
+        0
       end
 
-    if children && children.size > 0
-      score =
-        case
-        when children.all?{|c| c[:score] == 0} then 0
-        when children.all?{|c| c[:score] == win} then win
-        when children.all?{|c| c[:score] == lose} then lose
-        when children.any?{|c| c[:position] == next_pos && c[:score] == win} then win
-        when children.any?{|c| c[:position] == p && c[:score] == lose} then lose
-        end 
+    if children
+      scores = children.map{|c| c[:eval][:score]}
+      score = p == :first ? scores.max : scores.min
     end
 
     {:map => deep_copy, :score => score, :position => next_pos, :children => children}
@@ -182,7 +172,7 @@ class Map
   end
 end
 
-map = Map.new(3, 3)
+map = Map.new(4, 3)
 me = :first
 opponent = map.next_pos(me)
 finish = lambda do |p| 
@@ -207,26 +197,12 @@ while l = gets do
   tree = map.eval(opponent)
   candidate = 
     if me == :first
-      tree[:children].min{|c| c[:eval][:score]}
+      tree[:children].min_by{|c| c[:eval][:score]}
     else
-      tree[:children].max{|c| c[:eval][:score]}
+      tree[:children].max_by{|c| c[:eval][:score]}
     end
   map.put(candidate[:x], candidate[:y], opponent)
   map.dump
   break if finish.call(p)
 end
-  
-# map = Map.new(3, 3)
-# map.dump_eval(map.eval(:first))
 
-# p map.put(1, 3, 0)
-# map.dump
-# pp map.eval(:last)
-=begin
-map = Map.new
-p map.put(2, 4, 0)
-p map.put(2, 3, 1)
-p map.put(2, 2, 0)
-p map.put(5, 4, 1)
-map.dump
-=end
