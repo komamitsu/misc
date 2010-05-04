@@ -1,6 +1,9 @@
 require 'pp'
 
 class Map
+  MAX = 99999999
+  MIN = -MAX
+
   def initialize(len_x = 8, len_y = 8)
     @length_x = len_x
     @length_y = len_y
@@ -42,7 +45,7 @@ class Map
       p == :first ? 'o' : 'x'
     end
     bar = " #{Array.new(@length_x + 1, '+').join('-')}"
-    puts_with_indent((0...@length_y).inject(' '){|a, n| "#{a} #{n}"}, level)
+    puts_with_indent((0...@length_x).inject(' '){|a, n| "#{a} #{n}"}, level)
     puts_with_indent(bar, level)
     (0...@length_y).each do |y|
       puts_with_indent((0...@length_x).inject("#{y}|"){|a, x| "#{a}#{ppp.call(get(x, y)) || ' '}|"}, level)
@@ -76,26 +79,42 @@ class Map
     st
   end
 
-  def eval(p)
-    max = 1000
+  def eval(p, max = MIN, min = MAX, passed = false)
     st = status
-    win = :first ? max : -max
-    lose = -win
     next_pos = next_pos(p)
 
     children = 
-      unless st[:empty].zero?
+      if st[:empty].zero?
+        []
+      else
         cs = candidates(p)
-        if cs.size > 0
-          cs.map{|c| {:x => c[:x], :y => c[:y], :eval => c[:map].eval(next_pos)} }
-        else
-          cs = candidates(next_pos)
-          if cs.size > 0
-            cs.map{|c| {:x => c[:x], :y => c[:y], :eval => c[:map].eval(p)} }
-          else
+        if cs.empty?
+          if passed
             st[:empty] = 0
-            nil
+          else
+            cs << {:map => deep_copy}
+            passed = true
           end
+        end
+
+        # f       4          6          ?     eval(f, 6, 4)
+        #      |  |  |    |  |  |    |  |  |
+        # l    4  5  6    6  7  8    5  x  x  eval(l, MIN, MAX)
+        # 
+        unless st[:empty].zero?
+          child_evals =
+            cs.inject(:max => MIN, :min => MAX, :evals => [], :cut => false) do |a, c| 
+              child_eval = c[:map].eval(next_pos, a[:max], a[:min], passed)
+              if (c[:position] == :first && child_eval[:score] < max ) || (c[:position] == :last && child_eval[:score] > min)
+                a[:cut] = true
+              end
+
+              a[:evals] << {:x => c[:x], :y => c[:y], :eval => child_eval} unless a[:cut]
+              a[:max] = [a[:max], (c[:score] || 0)].max
+              a[:min] = [a[:min], (c[:score] || 0)].min
+              a
+            end
+          child_evals[:evals]
         end
       end
 
@@ -103,12 +122,12 @@ class Map
       if st[:empty].zero?
         diff = st[:first] - st[:last]
         diff /= diff.abs unless diff.zero?
-        diff * max
+        diff * MAX
       else
         0
       end
 
-    if children
+    if children && children.size > 0
       scores = children.map{|c| c[:eval][:score]}
       score = p == :first ? scores.max : scores.min
     end
@@ -206,6 +225,7 @@ loop do
     else
       tree[:children].max_by{|c| c[:eval][:score]}
     end
+  next if candidate[:x].nil? && candidate[:y].nil?
   map.put(candidate[:x], candidate[:y], opponent)
   map.dump
   break if finish.call(me)
