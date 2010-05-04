@@ -76,15 +76,17 @@ class Map
         end
       end
     end
+    st[:empty] = 0 if st[:first].zero? || st[:last].zero?
     st
   end
 
-  def eval(p, max = MIN, min = MAX, passed = false)
+  def eval(p, level = 3, max = MIN, min = MAX, passed = false)
     st = status
     next_pos = next_pos(p)
+    light_eval = level < 0
 
     children = 
-      if st[:empty].zero?
+      if st[:empty].zero? || light_eval
         []
       else
         cs = candidates(p)
@@ -104,10 +106,12 @@ class Map
         unless st[:empty].zero?
           child_evals =
             cs.inject(:max => MIN, :min => MAX, :evals => [], :cut => false) do |a, c| 
-              child_eval = c[:map].eval(next_pos, a[:max], a[:min], passed)
-              if (c[:position] == :first && child_eval[:score] < max ) || (c[:position] == :last && child_eval[:score] > min)
+              child_eval = c[:map].eval(next_pos, level - 1, a[:max], a[:min], passed)
+# puts "c[:position] => #{c[:position]}, child_eval[:position] => #{child_eval[:position]}, child_eval[:score] => #{child_eval[:score]}, max => #{max}, min => #{min}"
+              if (child_eval[:position] == :first && child_eval[:score] < max ) || (child_eval[:position] == :last && child_eval[:score] > min)
                 a[:cut] = true
               end
+# a[:cut] = false
 
               a[:evals] << {:x => c[:x], :y => c[:y], :eval => child_eval} unless a[:cut]
               a[:max] = [a[:max], (c[:score] || 0)].max
@@ -123,13 +127,22 @@ class Map
         diff = st[:first] - st[:last]
         diff /= diff.abs unless diff.zero?
         diff * MAX
+      elsif light_eval
+        [[0, 0], [0, @length_y - 1], [@length_x - 1, 0], [@length_x - 1, @length_y - 1]].inject(0) {|a, xy|
+          case get(xy[0], xy[1])
+          when :first then a += 10
+          when :last  then a -= 10
+          end
+          a
+        } - st[:first] + st[:last]
       else
         0
       end
 
     if children && children.size > 0
       scores = children.map{|c| c[:eval][:score]}
-      score = p == :first ? scores.max : scores.min
+#      score = p == :first ? scores.max : scores.min
+      score = p != :first ? scores.max : scores.min
     end
 
     {:map => deep_copy, :score => score, :position => next_pos, :children => children}
@@ -192,7 +205,7 @@ class Map
   end
 end
 
-map = Map.new(4, 4)
+map = Map.new(8, 8)
 me = :first
 opponent = map.next_pos(me)
 finish = lambda do |p| 
@@ -218,13 +231,17 @@ loop do
     break if finish.call(opponent)
   end
   puts '----------- computer is thinking... --------------'
+  before = Time.now
   tree = map.eval(opponent)
+#  map.dump_eval(tree)
   candidate = 
     if me == :first
       tree[:children].min_by{|c| c[:eval][:score]}
     else
       tree[:children].max_by{|c| c[:eval][:score]}
     end
+  after = Time.now
+  puts "----------- thinking time [#{after - before} sec] --------------"
   next if candidate[:x].nil? && candidate[:y].nil?
   map.put(candidate[:x], candidate[:y], opponent)
   map.dump
