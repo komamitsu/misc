@@ -20,7 +20,8 @@ class Map
   end
 
   def put(x, y, p)
-    raise "invalid position" if over?(x, y)
+    return nil if over?(x, y)
+    return nil if get(x, y)
 
     dirs = []
     dir_unit = [-1, 0, 1]
@@ -172,7 +173,7 @@ class Map
   end
 end
 
-map = Map.new(4, 3)
+map = Map.new(4, 4)
 me = :first
 opponent = map.next_pos(me)
 finish = lambda do |p| 
@@ -188,11 +189,15 @@ finish = lambda do |p|
 end
 
 map.dump
-while l = gets do
-  next unless l =~ /(\d+).*(\d+)/
-  map.put($1.to_i, $2.to_i, me)
-  map.dump
-  break if finish.call(opponent)
+loop do
+  puts '----------- enter "x y" or "pass" --------------'
+  l = gets
+  unless l.strip == 'pass'
+    next unless l =~ /(\d+).*(\d+)/
+    next unless map.put($1.to_i, $2.to_i, me)
+    map.dump
+    break if finish.call(opponent)
+  end
   puts '----------- computer is thinking... --------------'
   tree = map.eval(opponent)
   candidate = 
@@ -203,6 +208,6 @@ while l = gets do
     end
   map.put(candidate[:x], candidate[:y], opponent)
   map.dump
-  break if finish.call(p)
+  break if finish.call(me)
 end
 
