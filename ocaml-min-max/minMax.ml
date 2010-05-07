@@ -24,7 +24,7 @@ module MakeMinMax (Game : GameType) :
     type result = {player:Player.t; score:int; condition:gt; children:result list}
 
     let eval player condition = 
-      let rec _eval player condition depth =
+      let rec _eval player condition depth alpha beta =
         match Game.eval player condition depth with
         | Some score ->
             {player = player; score = score; 
@@ -32,21 +32,28 @@ module MakeMinMax (Game : GameType) :
         | None ->
           let next_player = Player.next_player player in
           let next_choices = Game.find player condition depth in
-          let children =
+          let children, alpha, beta =
             List.fold_left
-              (fun result nc -> (_eval next_player nc (depth + 1))::result)
-              [] next_choices in
-          let init, compare = 
-            match player with
-            | Player.First -> (min_int, max)
-            | Player.Last  -> (max_int, min) in
-          let score = 
-            List.fold_left 
-              (fun s child -> compare s child.score) init children in
-          {player = player; score = score; 
+              (fun status nc -> 
+                if alpha < beta then
+                  let children, alpha, beta = status in
+                  let child = _eval next_player nc (depth + 1) alpha beta in
+                  let children = child::children in
+                  match player with
+                  | Player.First when child.score > alpha ->
+                      (children, child.score, beta)
+                  | Player.Last  when child.score < beta  ->
+                      (children, alpha, child.score)
+                  | _ -> (children, alpha, beta)
+                else
+                  status
+              )
+              ([], alpha, beta) next_choices in
+          {player = player;
+           score = if player = Player.First then alpha else beta;
            condition = condition; children = children}
       in
-      _eval player condition 0
+      _eval player condition 0 min_int max_int
   end
 
 module SampleMinMax = 
