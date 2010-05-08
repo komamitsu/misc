@@ -101,6 +101,7 @@ Printf.printf "#2 player[%s] depth[%d] condition[%s] alpha[%d] beta[%d]\n"
       _eval player condition 0 min_int max_int
   end
 
+(*
 module SampleMinMax = 
   MakeMinMax(
     struct
@@ -130,3 +131,4 @@ module SampleMinMax =
 
 let _ =
   SampleMinMax.eval_with_alpha_beta_cut Player.First 7
+*)
