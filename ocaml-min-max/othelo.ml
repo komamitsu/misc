@@ -31,7 +31,7 @@ let dir_list =
       (List.map 
         (fun y -> List.map (fun x -> (x, y)) dirs) dirs))
 
-let reverse player t x y =
+let reverse t player x y =
   let _reverse dir_x dir_y =
     let rec loop rs x y =
       if is_out_of_board t x y then []
@@ -49,6 +49,24 @@ let reverse player t x y =
     (fun count (dir_x, dir_y) ->
       count + _reverse dir_x dir_y) 0 dir_list
 
+let next_moves t player =
+  let rec loop_y y moves =
+    if y >= length_y t then moves
+    else (
+      let rec loop_x x moves =
+        if x >= length_x t then moves
+        else (
+          let moves =
+            if reverse (clone t) player x y > 0 then (x, y)::moves
+            else moves in
+          loop_x (x + 1) moves
+        )
+      in
+      loop_y (y + 1) (loop_x 0 moves)
+    ) 
+  in
+  loop_y 0 []
+
 let _ =
   let b = create () in
   let c = clone b in
@@ -58,7 +76,7 @@ let _ =
   set_pos c 5 2 Last;
   set_pos c 6 2 First;
   set_pos c 5 4 First;
-  assert (reverse First c 3 2 = 3);
+  assert (reverse c First 3 2 = 3);
   assert (c = [|
     [|None; None; None; Some Last; None; None; None; None|];
     [|None; None; None; Some Last; None; None; None; None|];
@@ -68,4 +86,6 @@ let _ =
     [|None; None; None; None; None; None; None; None|];
     [|None; None; None; None; None; None; None; None|];
     [|None; None; None; None; None; None; None; None|]|]
-  )
+  );
+  assert (next_moves b First = [(3, 5); (2, 4); (5, 3); (4, 2)])
+
