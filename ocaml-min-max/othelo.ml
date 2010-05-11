@@ -1,3 +1,4 @@
+open Printf
 open Player
 type t = Player.t option array array
 
@@ -49,23 +50,52 @@ let reverse t player x y =
     (fun count (dir_x, dir_y) ->
       count + _reverse dir_x dir_y) 0 dir_list
 
+let iter_y t init f =
+  let rec loop y a =
+    if y >= length_y t then a
+    else loop (y + 1) (f y a) in
+  loop 0 init
+
+let iter_x t init f =
+  let rec loop x a =
+    if x >= length_x t then a
+    else loop (x + 1) (f x a) in
+  loop 0 init
+
+let iter t init f =
+  iter_y t init
+    (fun y a ->
+      iter_x t a (fun x a -> f x y a))
+
 let next_moves t player =
-  let rec loop_y y moves =
-    if y >= length_y t then moves
-    else (
-      let rec loop_x x moves =
-        if x >= length_x t then moves
-        else (
-          let moves =
-            if reverse (clone t) player x y > 0 then (x, y)::moves
-            else moves in
-          loop_x (x + 1) moves
-        )
-      in
-      loop_y (y + 1) (loop_x 0 moves)
-    ) 
-  in
-  loop_y 0 []
+  iter t []
+    (fun x y a ->
+      if reverse (clone t) player x y > 0 
+      then (x, y)::a else a)
+
+let print t =
+  print_string "  ";
+  iter_x t () (fun x _ -> printf " %d" x);
+  let bar = 
+    (fun () -> 
+      print_newline ();
+      print_string "  ";
+      iter_x t () (fun _ _ -> printf "+-");
+      print_endline "+") in
+  iter t ()
+    (fun x y _ ->
+      if x = 0 then (
+        bar ();
+        printf "%d |" y
+      );
+      printf "%s|" (
+        match get_pos t x y with
+        | Some First -> "o" 
+        | Some Last  -> "x" 
+        | None -> " "
+      )
+    );
+  bar ()
 
 let _ =
   let b = create () in
@@ -87,5 +117,6 @@ let _ =
     [|None; None; None; None; None; None; None; None|];
     [|None; None; None; None; None; None; None; None|]|]
   );
-  assert (next_moves b First = [(3, 5); (2, 4); (5, 3); (4, 2)])
+  assert (next_moves b First = [(3, 5); (2, 4); (5, 3); (4, 2)]);
+  print c
 
