@@ -1,3 +1,6 @@
+module Othelo =
+struct 
+
 open Printf
 open Player
 type t = Player.t option array array
@@ -73,29 +76,36 @@ let next_moves t player =
       if reverse (clone t) player x y > 0 
       then (x, y)::a else a)
 
-let print t =
-  print_string "  ";
-  iter_x t () (fun x _ -> printf " %d" x);
+let find player cond depth = next_moves cond player
+
+let eval player cond depth =
+  if depth > 4 then Some cond else None
+
+let to_string t =
+  let b = Buffer.create 512 in
+  Buffer.add_string b "  ";
+  iter_x t () (fun x _ -> Buffer.add_string b (sprintf " %d" x));
   let bar = 
     (fun () -> 
-      print_newline ();
-      print_string "  ";
-      iter_x t () (fun _ _ -> printf "+-");
-      print_endline "+") in
+      Buffer.add_string b (
+        sprintf "\n  %s+\n" (iter_x t "" (fun _ s -> s ^ "+-")))) in
   iter t ()
     (fun x y _ ->
       if x = 0 then (
         bar ();
-        printf "%d |" y
+        Buffer.add_string b (sprintf "%d |" y)
       );
-      printf "%s|" (
-        match get_pos t x y with
-        | Some First -> "o" 
-        | Some Last  -> "x" 
-        | None -> " "
+      Buffer.add_string b (
+        sprintf "%s|" (
+          match get_pos t x y with
+          | Some First -> "o" 
+          | Some Last  -> "x" 
+          | None -> " "
+        )
       )
     );
-  bar ()
+  bar ();
+  Buffer.contents b
 
 let _ =
   let b = create () in
@@ -120,3 +130,6 @@ let _ =
   assert (next_moves b First = [(3, 5); (2, 4); (5, 3); (4, 2)]);
   print c
 
+end
+
+module OtheloMinMax = MakeMinMax(Othelo)
