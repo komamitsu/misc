@@ -1,6 +1,3 @@
-module Othelo =
-struct 
-
 open Printf
 open Player
 type t = Player.t option array array
@@ -128,8 +125,7 @@ let _ =
     [|None; None; None; None; None; None; None; None|]|]
   );
   assert (next_moves b First = [(3, 5); (2, 4); (5, 3); (4, 2)]);
-  print c
+  print_string (to_string c);
+  let mini = create ~x:3 ~y:3 () in
+  print_string (to_string mini)
 
-end
-
-module OtheloMinMax = MakeMinMax(Othelo)
